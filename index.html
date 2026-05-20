@@ -271,9 +271,9 @@
             const { data: figs, error: errFigs } = await db
                 .from('figurinhas')
                 .select('id, codigo, numero, secao_id')
-                .order('secao_id')
-                .order('id');
+                .order('id', { ascending: true });
             if (errFigs) throw errFigs;
+            console.log('Figurinhas carregadas:', figs ? figs.length : 0);
             const mapaFigs = {};
             figs.forEach(f => mapaFigs[f.id] = {
                 codigo: f.codigo,
@@ -288,6 +288,7 @@
                 .select('figurinha_id, status, repetidas')
                 .eq('usuario_id', USUARIO_ID);
             if (errAlbum) throw errAlbum;
+            console.log('Album registros:', album ? album.length : 0);
 
             // 4) Montar cache local
             dbAlbum = {};
