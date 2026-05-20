@@ -289,11 +289,11 @@
     async function salvarSticker(figurinha_id, status, repetidas) {
         const { error } = await db
             .from('album_usuario')
-            .update({ status, repetidas, atualizado_em: new Date().toISOString() })
+            .update({ status: status, repetidas: repetidas })
             .eq('usuario_id', USUARIO_ID)
             .eq('figurinha_id', figurinha_id);
 
-        if (error) { mostrarToast('❌ Erro ao salvar!'); return false; }
+        if (error) { mostrarToast('❌ ' + error.message); console.error(error); return false; }
         return true;
     }
 
