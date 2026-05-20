@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Painel da Copa 2026 ⚽</title>
-    <script src="https://cdn.jsdelivr.net/npm/bcryptjs@2.4.3/dist/bcrypt.min.js"></script>
     <style>
         :root {
             --primary: #6a1b29; /* Vinho da Copa */
@@ -194,9 +193,9 @@
     </div>
 
     <script>
-        // CONFIGURAÇÃO DE SEGURANÇA - SENHA CRIPTOGRAFADA COM BCRYPTJS
-        // Hash válido para: "italoigor"
-        const SENHA_HASH = "$2b$10$gG2hW3ZX5lJ6kK5mM8oJ4u5N1P7lQrR5uW2mX3yZ4aB5cC6dD7eE8f";
+        // CONFIGURAÇÃO DE SEGURANÇA
+        // Senha: copa1234
+        const SENHA_CORRETA = "copa1234";
         
         // Dados do Álbum (980 Figurinhas divididas por seções típicas da Panini)
         const TOTAL_FIGURINHAS = 980;
@@ -235,8 +234,8 @@
             atualizarPlacar();
         }
 
-        // Sistema de Login com Criptografia Bcrypt
-        async function verificarSenha() {
+        // Sistema de Login Simples
+        function verificarSenha() {
             const input = document.getElementById('password-input').value;
             const btn = document.getElementById('login-btn');
             const errorMsg = document.getElementById('login-error');
@@ -247,34 +246,21 @@
                 return;
             }
             
-            // Desabilita o botão enquanto valida
             btn.disabled = true;
             btn.innerText = "Verificando...";
             errorMsg.style.display = 'none';
             
-            try {
-                // Compara a senha digitada com o hash
-                const senhaCorreta = await bcrypt.compare(input, SENHA_HASH);
-                
-                console.log('Comparação de senha:', senhaCorreta);
-                
-                if (senhaCorreta) {
-                    document.getElementById('login-screen').style.display = 'none';
-                    localStorage.setItem('autenticado_copa', 'true');
-                    inicializarPainel();
-                } else {
-                    errorMsg.innerText = "Senha incorreta! Tente novamente.";
-                    errorMsg.style.display = 'block';
-                    btn.disabled = false;
-                    btn.innerText = "Entrar no Painel";
-                    document.getElementById('password-input').value = '';
-                }
-            } catch (erro) {
-                console.error('Erro ao verificar senha:', erro);
-                errorMsg.innerText = "Erro ao verificar senha. Tente novamente.";
+            // Comparação simples
+            if (input === SENHA_CORRETA) {
+                document.getElementById('login-screen').style.display = 'none';
+                localStorage.setItem('autenticado_copa', 'true');
+                inicializarPainel();
+            } else {
+                errorMsg.innerText = "Senha incorreta! Tente novamente.";
                 errorMsg.style.display = 'block';
                 btn.disabled = false;
                 btn.innerText = "Entrar no Painel";
+                document.getElementById('password-input').value = '';
             }
         }
 
