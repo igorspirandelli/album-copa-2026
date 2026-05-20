@@ -239,24 +239,38 @@
     async function carregarAlbum() {
         mostrarLoading(true);
         try {
-            const { data, error } = await db
+            // 1) Buscar seções
+            const { data: secoes, error: errSecoes } = await db
+                .from('secoes')
+                .select('id, codigo');
+            if (errSecoes) throw errSecoes;
+            const mapaSecoes = {};
+            secoes.forEach(s => mapaSecoes[s.id] = s.codigo);
+
+            // 2) Buscar figurinhas
+            const { data: figs, error: errFigs } = await db
+                .from('figurinhas')
+                .select('id, numero, secao_id');
+            if (errFigs) throw errFigs;
+            const mapaFigs = {};
+            figs.forEach(f => mapaFigs[f.id] = { numero: f.numero, secao: mapaSecoes[f.secao_id] });
+
+            // 3) Buscar estado do álbum
+            const { data: album, error: errAlbum } = await db
                 .from('album_usuario')
-                .select(`
-                    figurinha_id,
-                    status,
-                    repetidas,
-                    figurinhas ( numero, secoes ( codigo ) )
-                `)
+                .select('figurinha_id, status, repetidas')
                 .eq('usuario_id', USUARIO_ID);
+            if (errAlbum) throw errAlbum;
 
-            if (error) throw error;
-
+            // 4) Montar cache local
             dbAlbum = {};
-            data.forEach(row => {
+            album.forEach(row => {
+                const fig = mapaFigs[row.figurinha_id];
+                if (!fig) return;
                 dbAlbum[row.figurinha_id] = {
                     figurinha_id: row.figurinha_id,
-                    numero:       row.figurinhas.numero,
-                    secao:        row.figurinhas.secoes.codigo,
+                    numero:       fig.numero,
+                    secao:        fig.secao,
                     status:       row.status,
                     repetidas:    row.repetidas
                 };
