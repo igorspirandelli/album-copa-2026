@@ -111,6 +111,7 @@
         .btn-tenho { background: #2ecc71; color: white; }
         .btn-repetida { background: #e74c3c; color: white; }
         .btn-limpar { background: #7f8c8d; color: white; }
+        .btn-menos-rep { background: #e67e22; color: white; }
 
         .toast {
             position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
@@ -312,6 +313,10 @@
         if (acao === 'colada')   { novoStatus = 'colada'; }
         if (acao === 'repetida') { novoStatus = 'colada'; novasRep += 1; }
         if (acao === 'limpar')   { novoStatus = 'falta';  novasRep = 0; }
+        if (acao === 'menosrep') {
+            novasRep = Math.max(0, novasRep - 1);
+            if (novasRep === 0 && novoStatus === 'colada') novoStatus = 'colada'; // mantém colada
+        }
 
         fecharModal(); // fecha DEPOIS de copiar o id
 
