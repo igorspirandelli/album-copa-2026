@@ -128,6 +128,7 @@
         }
         .secao-grupo { background: var(--secondary); color: var(--primary); padding: 2px 8px; border-radius: 10px; font-size: 12px; }
         .secao-codigo { font-size: 16px; }
+        .secao-nome { font-size: 15px; color: rgba(255,255,255,0.8); font-weight: normal; }
         .toast {
             position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
             background: #2c3e50; color: white; padding: 10px 24px; border-radius: 20px;
@@ -276,10 +277,11 @@
             console.log('Figurinhas carregadas:', figs ? figs.length : 0);
             const mapaFigs = {};
             figs.forEach(f => mapaFigs[f.id] = {
-                codigo: f.codigo,
-                numero: f.numero,
-                secao:  mapaSecoes[f.secao_id] ? mapaSecoes[f.secao_id].codigo : '?',
-                grupo:  mapaSecoes[f.secao_id] ? mapaSecoes[f.secao_id].grupo  : '?'
+                codigo:     f.codigo,
+                numero:     f.numero,
+                secao:      mapaSecoes[f.secao_id] ? mapaSecoes[f.secao_id].codigo : '?',
+                nome_secao: mapaSecoes[f.secao_id] ? mapaSecoes[f.secao_id].nome   : '?',
+                grupo:      mapaSecoes[f.secao_id] ? mapaSecoes[f.secao_id].grupo  : '?'
             });
 
             // 3) Buscar estado do álbum
@@ -300,6 +302,7 @@
                     codigo:       fig.codigo,
                     numero:       fig.numero,
                     secao:        fig.secao,
+                    nome_secao:   fig.nome_secao,
                     grupo:        fig.grupo,
                     status:       row.status,
                     repetidas:    row.repetidas
@@ -376,7 +379,7 @@
             if (filtroAtual === 'repetidas') matchFiltro = s.repetidas > 0;
             if (!matchBusca || !matchFiltro) return;
 
-            if (!grupos[s.secao]) grupos[s.secao] = { grupo: s.grupo, itens: [] };
+            if (!grupos[s.secao]) grupos[s.secao] = { grupo: s.grupo, nome: s.nome_secao || s.secao, itens: [] };
             grupos[s.secao].itens.push(s);
         });
 
@@ -385,7 +388,7 @@
             // Cabeçalho da seção
             const header = document.createElement('div');
             header.className = 'secao-header';
-            header.innerHTML = `<span class="secao-grupo">${dados.grupo !== 'Inicial' && dados.grupo !== 'Especial' ? 'Grupo ' + dados.grupo : dados.grupo}</span> <span class="secao-codigo">${secao}</span>`;
+            header.innerHTML = `<span class="secao-grupo">${dados.grupo !== 'Inicial' && dados.grupo !== 'Especial' ? 'Grupo ' + dados.grupo : dados.grupo}</span> <span class="secao-codigo">${secao}</span> <span class="secao-nome">${dados.nome}</span>`;
             grid.appendChild(header);
 
             // Cards da seção
