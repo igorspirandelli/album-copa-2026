@@ -113,6 +113,21 @@
         .btn-limpar { background: #7f8c8d; color: white; }
         .btn-menos-rep { background: #e67e22; color: white; }
 
+        .secao-header {
+            grid-column: 1 / -1;
+            background: var(--primary);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 14px;
+            margin-top: 10px;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        .secao-grupo { background: var(--secondary); color: var(--primary); padding: 2px 8px; border-radius: 10px; font-size: 12px; }
+        .secao-codigo { font-size: 16px; }
         .toast {
             position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
             background: #2c3e50; color: white; padding: 10px 24px; border-radius: 20px;
@@ -199,6 +214,7 @@
 
     // ─── ESTADO LOCAL (cache) ────────────────────────────────
     let dbAlbum     = {};   // { figurinha_id: { status, repetidas, secao, numero } }
+    let dbSecoes    = [];   // lista de seções
     let stickerSel  = null;
     let filtroAtual = 'todas';
 
@@ -244,18 +260,27 @@
             // 1) Buscar seções
             const { data: secoes, error: errSecoes } = await db
                 .from('secoes')
-                .select('id, codigo');
+                .select('id, codigo, nome, grupo')
+                .order('ordem');
             if (errSecoes) throw errSecoes;
             const mapaSecoes = {};
-            secoes.forEach(s => mapaSecoes[s.id] = s.codigo);
+            secoes.forEach(s => mapaSecoes[s.id] = { codigo: s.codigo, nome: s.nome, grupo: s.grupo });
+            dbSecoes = secoes;
 
             // 2) Buscar figurinhas
             const { data: figs, error: errFigs } = await db
                 .from('figurinhas')
-                .select('id, numero, secao_id');
+                .select('id, codigo, numero, secao_id')
+                .order('secao_id')
+                .order('id');
             if (errFigs) throw errFigs;
             const mapaFigs = {};
-            figs.forEach(f => mapaFigs[f.id] = { numero: f.numero, secao: mapaSecoes[f.secao_id] });
+            figs.forEach(f => mapaFigs[f.id] = {
+                codigo: f.codigo,
+                numero: f.numero,
+                secao:  mapaSecoes[f.secao_id] ? mapaSecoes[f.secao_id].codigo : '?',
+                grupo:  mapaSecoes[f.secao_id] ? mapaSecoes[f.secao_id].grupo  : '?'
+            });
 
             // 3) Buscar estado do álbum
             const { data: album, error: errAlbum } = await db
@@ -269,10 +294,12 @@
             album.forEach(row => {
                 const fig = mapaFigs[row.figurinha_id];
                 if (!fig) return;
-                dbAlbum[parseInt(row.figurinha_id)] = {
-                    figurinha_id: row.figurinha_id,
+                dbAlbum[Number(row.figurinha_id)] = {
+                    figurinha_id: Number(row.figurinha_id),
+                    codigo:       fig.codigo,
                     numero:       fig.numero,
                     secao:        fig.secao,
+                    grupo:        fig.grupo,
                     status:       row.status,
                     repetidas:    row.repetidas
                 };
@@ -337,27 +364,43 @@
         const busca = document.getElementById('search-box').value.toLowerCase();
         grid.innerHTML = '';
 
-        const itens = Object.values(dbAlbum).sort((a,b) => a.numero - b.numero);
+        const itens = Object.values(dbAlbum).sort((a,b) => a.figurinha_id - b.figurinha_id);
 
+        // Agrupar por seção
+        const grupos = {};
         itens.forEach(s => {
             const matchBusca  = s.numero.toString().includes(busca) || s.secao.toLowerCase().includes(busca);
             let   matchFiltro = true;
             if (filtroAtual === 'faltam')    matchFiltro = s.status === 'falta';
             if (filtroAtual === 'repetidas') matchFiltro = s.repetidas > 0;
-
             if (!matchBusca || !matchFiltro) return;
 
-            const card = document.createElement('div');
-            card.className = `sticker-card ${s.status === 'colada' ? 'tenho' : ''} ${s.repetidas > 0 ? 'has-rep' : ''}`;
-            card.dataset.fid = s.figurinha_id;
-            card.addEventListener('click', function() { abrirModal(this.dataset.fid); });
-            card.innerHTML = `
-                <div class="badge-repetida">${s.repetidas}</div>
-                <div class="team">${s.secao}</div>
-                <div class="number">${s.numero}</div>
-                <div></div>
-            `;
-            grid.appendChild(card);
+            if (!grupos[s.secao]) grupos[s.secao] = { grupo: s.grupo, itens: [] };
+            grupos[s.secao].itens.push(s);
+        });
+
+        // Renderizar por seção com cabeçalho
+        Object.entries(grupos).forEach(([secao, dados]) => {
+            // Cabeçalho da seção
+            const header = document.createElement('div');
+            header.className = 'secao-header';
+            header.innerHTML = `<span class="secao-grupo">${dados.grupo !== 'Inicial' && dados.grupo !== 'Especial' ? 'Grupo ' + dados.grupo : dados.grupo}</span> <span class="secao-codigo">${secao}</span>`;
+            grid.appendChild(header);
+
+            // Cards da seção
+            dados.itens.forEach(s => {
+                const card = document.createElement('div');
+                card.className = `sticker-card ${s.status === 'colada' ? 'tenho' : ''} ${s.repetidas > 0 ? 'has-rep' : ''}`;
+                card.dataset.fid = s.figurinha_id;
+                card.addEventListener('click', function() { abrirModal(this.dataset.fid); });
+                card.innerHTML = `
+                    <div class="badge-repetida">${s.repetidas}</div>
+                    <div class="team">${s.secao}</div>
+                    <div class="number">${s.numero}</div>
+                    <div></div>
+                `;
+                grid.appendChild(card);
+            });
         });
     }
 
