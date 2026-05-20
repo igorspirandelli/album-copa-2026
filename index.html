@@ -26,7 +26,7 @@
         .login-box { text-align: center; padding: 20px; width: 90%; max-width: 400px; }
         .login-box input {
             width: 100%; padding: 12px; margin: 15px 0; border: none;
-            border-radius: 8px; font-size: 16px; text-align: center;
+            border-radius: 8px; font-size: 16px; text-align: center; color: #333;
         }
         .login-box button {
             background: var(--secondary); color: var(--primary); border: none;
@@ -193,27 +193,23 @@
     </div>
 
     <script>
-        // CONFIGURAÇÃO DE SEGURANÇA (O Hash abaixo equivale à senha "copa1234")
+        // CONFIGURAÇÃO DE SEGURANÇA (O Hash abaixo equivale estritamente à senha "copa1234")
         const HASH_SENHA_CORRETA = "40206cbcc86a9f5fa453736567bb939e6a96f13e71d34346eb41c9f4561a3375";
         
-        // Função auxiliar corrigida para transformar o texto digitado em um Hash SHA-256
+        // Função criptográfica SHA-256 corrigida e padronizada
         async function gerarSHA256(texto) {
             const encoder = new TextEncoder();
             const data = encoder.encode(texto);
             const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-            
-            // Converte o buffer diretamente para uma string hexadecimal de forma segura
             const hashArray = Array.from(new Uint8Array(hashBuffer));
             return hashArray.map(b => ('0' + b.toString(16)).slice(-2)).join('');
         }
 
-        // Dados do Álbum (980 Figurinhas divididas por seções típicas da Panini)
         const TOTAL_FIGURINHAS = 980;
         let dbAlbum = {};
         let stickerSelecionado = null;
         let filtroAtual = 'todas';
 
-        // Inicializa a estrutura de dados do álbum vazio
         function inicializarDadosAlbum() {
             const salvo = localStorage.getItem('album_copa_2026');
             if (salvo) {
@@ -241,7 +237,7 @@
             atualizarPlacar();
         }
 
-        // Sistema de Login com proteção Hash Assíncrona
+        // Sistema de Login Ajustado
         async function verificarSenha() {
             const input = document.getElementById('password-input').value;
             const btn = document.getElementById('login-btn');
@@ -257,7 +253,6 @@
             btn.innerText = "Verificando...";
             errorMsg.style.display = 'none';
             
-            // Transforma a senha digitada em Hash e compara com o correto escondido
             const hashDigitado = await gerarSHA256(input);
             
             if (hashDigitado === HASH_SENHA_CORRETA) {
@@ -270,10 +265,11 @@
                 btn.disabled = false;
                 btn.innerText = "Entrar no Painel";
                 document.getElementById('password-input').value = '';
+                // Se der erro, limpa qualquer flag errada do storage por segurança
+                localStorage.removeItem('autenticado_copa');
             }
         }
 
-        // Função de Logout - Limpa autenticação e localStorage
         function logout() {
             if (confirm('Tem certeza que deseja sair?')) {
                 localStorage.removeItem('autenticado_copa');
@@ -285,11 +281,10 @@
                 document.getElementById('login-btn').innerText = 'Entrar no Painel';
                 
                 document.getElementById('login-screen').style.display = 'flex';
-                console.log('✅ Cache limpo e desautenticado com sucesso!');
+                window.location.reload();
             }
         }
 
-        // Renderiza as figurinhas na tela
         function renderizarGrade() {
             const grid = document.getElementById('album-grid');
             grid.innerHTML = "";
@@ -319,7 +314,6 @@
             }
         }
 
-        // Atualiza os números no topo
         function atualizarPlacar() {
             let coladas = 0;
             let repetidas = 0;
@@ -336,7 +330,6 @@
             document.getElementById('stat-repetidas').innerText = repetidas;
         }
 
-        // Controle dos Modais / Cliques
         function abrirGerenciador(numeroSticker) {
             stickerSelecionado = numeroSticker;
             const sticker = dbAlbum[numeroSticker];
