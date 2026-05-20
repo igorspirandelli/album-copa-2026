@@ -193,10 +193,18 @@
     </div>
 
     <script>
-        // CONFIGURAÇÃO DE SEGURANÇA
-        // Senha: copa1234
-        const SENHA_CORRETA = "copa1234";
+        // CONFIGURAÇÃO DE SEGURANÇA (O Hash abaixo equivale à senha "copa1234")
+        const HASH_SENHA_CORRETA = "40206cbcc86a9f5fa453736567bb939e6a96f13e71d34346eb41c9f4561a3375";
         
+        // Função auxiliar para transformar o texto digitado em um Hash SHA-256
+        async function gerarSHA256(texto) {
+            const encoder = new TextEncoder();
+            const data = encoder.encode(texto);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
         // Dados do Álbum (980 Figurinhas divididas por seções típicas da Panini)
         const TOTAL_FIGURINHAS = 980;
         let dbAlbum = {};
@@ -209,19 +217,16 @@
             if (salvo) {
                 dbAlbum = JSON.parse(salvo);
             } else {
-                // Se não houver dados, gera o mapa de 1 a 980
-                // Para simplificar a busca, usamos as siglas comuns de seleções simuladas
                 const secoes = ["FWC", "USA", "MEX", "CAN", "BRA", "ARG", "FRA", "GER", "ENG", "ITA", "ESP", "POR", "JPN", "MAR", "SEN", "ALM"];
                 let secaoAtualIdx = 0;
                 
                 for (let i = 1; i <= TOTAL_FIGURINHAS; i++) {
-                    // Divide as 980 figurinhas em blocos para ter siglas de países
                     if (i % 60 === 0 && secaoAtualIdx < secoes.length - 1) secaoAtualIdx++;
                     
                     dbAlbum[i] = {
                         numero: i,
                         secao: secoes[secaoAtualIdx],
-                        status: "falta", // falta, colada
+                        status: "falta", 
                         repetidas: 0
                     };
                 }
@@ -234,8 +239,8 @@
             atualizarPlacar();
         }
 
-        // Sistema de Login Simples
-        function verificarSenha() {
+        // Sistema de Login Atualizado com proteção Hash Assíncrona
+        async function verificarSenha() {
             const input = document.getElementById('password-input').value;
             const btn = document.getElementById('login-btn');
             const errorMsg = document.getElementById('login-error');
@@ -250,8 +255,10 @@
             btn.innerText = "Verificando...";
             errorMsg.style.display = 'none';
             
-            // Comparação simples
-            if (input === SENHA_CORRETA) {
+            // Transforma a senha digitada em Hash e compara com o correto escondido
+            const hashDigitado = await gerarSHA256(input);
+            
+            if (hashDigitado === HASH_SENHA_CORRETA) {
                 document.getElementById('login-screen').style.display = 'none';
                 localStorage.setItem('autenticado_copa', 'true');
                 inicializarPainel();
@@ -267,19 +274,15 @@
         // Função de Logout - Limpa autenticação e localStorage
         function logout() {
             if (confirm('Tem certeza que deseja sair?')) {
-                // Remove autenticação
                 localStorage.removeItem('autenticado_copa');
                 localStorage.removeItem('album_copa_2026');
                 
-                // Limpa o formulário de login
                 document.getElementById('password-input').value = '';
                 document.getElementById('login-error').style.display = 'none';
                 document.getElementById('login-btn').disabled = false;
                 document.getElementById('login-btn').innerText = 'Entrar no Painel';
                 
-                // Mostra tela de login
                 document.getElementById('login-screen').style.display = 'flex';
-                
                 console.log('✅ Cache limpo e desautenticado com sucesso!');
             }
         }
@@ -292,11 +295,8 @@
 
             for (let i = 1; i <= TOTAL_FIGURINHAS; i++) {
                 const sticker = dbAlbum[i];
-                
-                // Aplicar Filtro de Busca (Número ou Nome da Seleção)
                 const matchesSearch = sticker.numero.toString().includes(termoBusca) || sticker.secao.toLowerCase().includes(termoBusca);
                 
-                // Aplicar Filtros de Botão (Todas, Faltam, Repetidas)
                 let matchesFiltro = true;
                 if (filtroAtual === 'faltam') matchesFiltro = (sticker.status === 'falta');
                 if (filtroAtual === 'repetidas') matchesFiltro = (sticker.repetidas > 0);
@@ -355,7 +355,7 @@
             if (acao === 'colada') {
                 dbAlbum[stickerSelecionado].status = 'colada';
             } else if (acao === 'repetida') {
-                dbAlbum[stickerSelecionado].status = 'colada'; // Se tem repetida, assume que já colou a primeira
+                dbAlbum[stickerSelecionado].status = 'colada';
                 dbAlbum[stickerSelecionado].repetidas += 1;
             } else if (acao === 'limpar') {
                 dbAlbum[stickerSelecionado].status = 'falta';
@@ -384,7 +384,6 @@
             renderizarGrade();
         }
 
-        // Checa login automático ao abrir a página
         window.onload = function() {
             if (localStorage.getItem('autenticado_copa') === 'true') {
                 document.getElementById('login-screen').style.display = 'none';
