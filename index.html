@@ -301,20 +301,24 @@
     async function alterarStatus(acao) {
         if (!stickerSel) return;
 
-        const s = dbAlbum[stickerSel];
-        let novoStatus   = s.status;
-        let novasRep     = s.repetidas;
+        // Salvar o id ANTES de fechar o modal
+        const idParaSalvar = parseInt(stickerSel);
+        const s = dbAlbum[idParaSalvar];
+        if (!s) { fecharModal(); return; }
+
+        let novoStatus = s.status;
+        let novasRep   = s.repetidas;
 
         if (acao === 'colada')   { novoStatus = 'colada'; }
         if (acao === 'repetida') { novoStatus = 'colada'; novasRep += 1; }
         if (acao === 'limpar')   { novoStatus = 'falta';  novasRep = 0; }
 
-        fecharModal();
+        fecharModal(); // fecha DEPOIS de copiar o id
 
-        const ok = await salvarSticker(stickerSel, novoStatus, novasRep);
+        const ok = await salvarSticker(idParaSalvar, novoStatus, novasRep);
         if (ok) {
-            dbAlbum[stickerSel].status    = novoStatus;
-            dbAlbum[stickerSel].repetidas = novasRep;
+            dbAlbum[idParaSalvar].status    = novoStatus;
+            dbAlbum[idParaSalvar].repetidas = novasRep;
             atualizarPlacar();
             renderizarGrade();
             mostrarToast('✅ Figurinha atualizada!');
