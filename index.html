@@ -267,7 +267,7 @@
             album.forEach(row => {
                 const fig = mapaFigs[row.figurinha_id];
                 if (!fig) return;
-                dbAlbum[row.figurinha_id] = {
+                dbAlbum[parseInt(row.figurinha_id)] = {
                     figurinha_id: row.figurinha_id,
                     numero:       fig.numero,
                     secao:        fig.secao,
@@ -291,7 +291,7 @@
             .from('album_usuario')
             .update({ status: status, repetidas: repetidas })
             .eq('usuario_id', USUARIO_ID)
-            .eq('figurinha_id', figurinha_id);
+            .eq('figurinha_id', parseInt(figurinha_id));
 
         if (error) { mostrarToast('❌ ' + error.message); console.error(error); return false; }
         return true;
@@ -361,7 +361,7 @@
     }
 
     function abrirModal(id) {
-        stickerSel = id;
+        stickerSel = parseInt(id);
         const s = dbAlbum[id];
         document.getElementById('modal-sticker-title').innerText = `${s.secao} - Nº ${s.numero}`;
         document.getElementById('action-modal').style.display = 'block';
