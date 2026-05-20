@@ -196,13 +196,15 @@
         // CONFIGURAÇÃO DE SEGURANÇA (O Hash abaixo equivale à senha "copa1234")
         const HASH_SENHA_CORRETA = "40206cbcc86a9f5fa453736567bb939e6a96f13e71d34346eb41c9f4561a3375";
         
-        // Função auxiliar para transformar o texto digitado em um Hash SHA-256
+        // Função auxiliar corrigida para transformar o texto digitado em um Hash SHA-256
         async function gerarSHA256(texto) {
             const encoder = new TextEncoder();
             const data = encoder.encode(texto);
             const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+            
+            // Converte o buffer diretamente para uma string hexadecimal de forma segura
             const hashArray = Array.from(new Uint8Array(hashBuffer));
-            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+            return hashArray.map(b => ('0' + b.toString(16)).slice(-2)).join('');
         }
 
         // Dados do Álbum (980 Figurinhas divididas por seções típicas da Panini)
@@ -239,7 +241,7 @@
             atualizarPlacar();
         }
 
-        // Sistema de Login Atualizado com proteção Hash Assíncrona
+        // Sistema de Login com proteção Hash Assíncrona
         async function verificarSenha() {
             const input = document.getElementById('password-input').value;
             const btn = document.getElementById('login-btn');
