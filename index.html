@@ -4,20 +4,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Painel da Copa 2026 ⚽</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         :root {
-            --primary: #6a1b29; /* Vinho da Copa */
-            --secondary: #d4af37; /* Dourado */
+            --primary: #6a1b29;
+            --secondary: #d4af37;
             --bg: #f4f4f9;
             --card-bg: #ffffff;
             --text: #333;
         }
-
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-
         body { background-color: var(--bg); color: var(--text); padding-bottom: 60px; }
 
-        /* Tela de Login */
         #login-screen {
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
             background: var(--primary); display: flex; flex-direction: column;
@@ -32,26 +30,30 @@
             background: var(--secondary); color: var(--primary); border: none;
             padding: 12px 30px; font-weight: bold; border-radius: 8px; cursor: pointer; font-size: 16px;
         }
-        .login-box button:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-        }
+        .login-box button:disabled { opacity: 0.6; cursor: not-allowed; }
 
-        /* Header e Placar */
-        header { 
-            background: var(--primary); color: white; padding: 20px; text-align: center; sticky: top; 
+        #loading-screen {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: var(--primary); display: none; flex-direction: column;
+            justify-content: center; align-items: center; z-index: 999; color: white;
+        }
+        .spinner {
+            width: 50px; height: 50px; border: 5px solid rgba(255,255,255,0.3);
+            border-top-color: var(--secondary); border-radius: 50%;
+            animation: spin 1s linear infinite; margin-bottom: 20px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        header {
+            background: var(--primary); color: white; padding: 20px;
             display: flex; justify-content: space-between; align-items: center;
         }
         header h1 { color: var(--secondary); font-size: 24px; margin-bottom: 5px; flex: 1; }
-        
         .btn-logout {
             background: #e74c3c; color: white; border: none; padding: 8px 16px;
             border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 14px;
         }
-        .btn-logout:hover {
-            background: #c0392b;
-        }
-        
+
         .stats-container {
             display: flex; justify-content: space-around; background: white;
             margin: 15px; padding: 15px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);
@@ -60,21 +62,16 @@
         .stat-box span { display: block; font-size: 20px; font-weight: bold; color: var(--primary); }
         .stat-box label { font-size: 12px; color: #777; }
 
-        /* Filtros */
-        .filters { display: flex; justify-content: center; gap: 10px; margin: 15px; }
+        .filters { display: flex; justify-content: center; gap: 10px; margin: 15px; flex-wrap: wrap; }
         .filter-btn {
             background: #e0e0e0; border: none; padding: 8px 16px;
             border-radius: 20px; cursor: pointer; font-weight: 600; font-size: 14px;
         }
         .filter-btn.active { background: var(--primary); color: white; }
 
-        /* Busca */
         .search-container { padding: 0 15px; margin-bottom: 15px; }
-        .search-input {
-            width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 16px;
-        }
+        .search-input { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 16px; }
 
-        /* Grade de Figurinhas */
         .grid {
             display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
             gap: 10px; padding: 15px; max-width: 1200px; margin: 0 auto;
@@ -86,24 +83,18 @@
             justify-content: space-between; align-items: center; padding: 8px;
             position: relative; cursor: pointer; user-select: none; transition: all 0.2s;
         }
-
         .sticker-card .number { font-weight: bold; font-size: 16px; }
         .sticker-card .team { font-size: 10px; color: #777; font-weight: bold; }
-
-        /* Estados da Figurinha */
         .sticker-card.tenho { border-color: #2ecc71; background: #e8f8f0; }
         .sticker-card.tenho .number { color: #27ae60; }
-        
         .sticker-card .badge-repetida {
             position: absolute; top: -5px; right: -5px; background: #e74c3c;
             color: white; border-radius: 50%; width: 22px; height: 22px;
-            display: flex; justify-content: center; align-items: center;
+            display: none; justify-content: center; align-items: center;
             font-size: 12px; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-            display: none;
         }
         .sticker-card.has-rep .badge-repetida { display: flex; }
 
-        /* Menu de Ações (Aparece ao clicar) */
         .modal {
             position: fixed; bottom: 0; left: 0; width: 100%; background: white;
             box-shadow: 0 -5px 15px rgba(0,0,0,0.2); padding: 20px;
@@ -116,275 +107,286 @@
         .modal-content { text-align: center; }
         .modal-title { font-size: 20px; font-weight: bold; margin-bottom: 15px; color: var(--primary); }
         .modal-btns { display: flex; justify-content: center; gap: 15px; margin-top: 15px; }
-        .btn-action {
-            padding: 12px 24px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; flex: 1;
-        }
+        .btn-action { padding: 12px 24px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; flex: 1; }
         .btn-tenho { background: #2ecc71; color: white; }
         .btn-repetida { background: #e74c3c; color: white; }
         .btn-limpar { background: #7f8c8d; color: white; }
+
+        .toast {
+            position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
+            background: #2c3e50; color: white; padding: 10px 24px; border-radius: 20px;
+            font-size: 14px; display: none; z-index: 9999; box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
     </style>
 </head>
 <body>
 
-    <!-- TELA DE LOGIN PRIVADO -->
-    <div id="login-screen">
-        <div class="login-box">
-            <h2>🔐 Álbum Privado</h2>
-            <p>Acesso exclusivo para os irmãos</p>
-            <input type="password" id="password-input" placeholder="Digite a senha de acesso" onkeypress="if(event.key==='Enter') verificarSenha()">
-            <button id="login-btn" onclick="verificarSenha()">Entrar no Painel</button>
-            <p id="login-error" style="color: #ff7675; margin-top: 10px; display: none;">Senha incorreta!</p>
+<!-- TELA DE LOGIN -->
+<div id="login-screen">
+    <div class="login-box">
+        <h2>🔐 Álbum Privado</h2>
+        <p>Acesso exclusivo para os irmãos</p>
+        <input type="password" id="password-input" placeholder="Digite a senha de acesso"
+               onkeypress="if(event.key==='Enter') verificarSenha()">
+        <button id="login-btn" onclick="verificarSenha()">Entrar no Painel</button>
+        <p id="login-error" style="color:#ff7675;margin-top:10px;display:none;"></p>
+    </div>
+</div>
+
+<!-- TELA DE CARREGAMENTO -->
+<div id="loading-screen">
+    <div class="spinner"></div>
+    <p>Carregando álbum...</p>
+</div>
+
+<!-- CONTEÚDO PRINCIPAL -->
+<header>
+    <div style="flex:1">
+        <h1>Álbum Copa 2026 🏆</h1>
+        <p>Controle de Figurinhas dos Irmãos</p>
+    </div>
+    <button class="btn-logout" onclick="logout()">🚪 Sair</button>
+</header>
+
+<div class="stats-container">
+    <div class="stat-box"><span id="stat-coladas">0</span><label>Coladas</label></div>
+    <div class="stat-box"><span id="stat-progresso">0%</span><label>Progresso</label></div>
+    <div class="stat-box"><span id="stat-repetidas">0</span><label>Repetidas</label></div>
+</div>
+
+<div class="search-container">
+    <input type="text" id="search-box" class="search-input"
+           placeholder="Buscar por número ou seleção... (Ex: BRA, FWC, 10)"
+           oninput="filtrarGrade()">
+</div>
+
+<div class="filters">
+    <button class="filter-btn active" onclick="mudarFiltro('todas', this)">Todas</button>
+    <button class="filter-btn" onclick="mudarFiltro('faltam', this)">Faltando</button>
+    <button class="filter-btn" onclick="mudarFiltro('repetidas', this)">Repetidas</button>
+</div>
+
+<div class="grid" id="album-grid"></div>
+
+<div class="modal-overlay" id="overlay" onclick="fecharModal()"></div>
+<div class="modal" id="action-modal">
+    <div class="modal-content">
+        <div class="modal-title" id="modal-sticker-title">Figurinha</div>
+        <p>Selecione uma ação para esta figurinha:</p>
+        <div class="modal-btns">
+            <button class="btn-action btn-tenho" onclick="alterarStatus('colada')">✅ Já Tenho / Colei</button>
+            <button class="btn-action btn-repetida" onclick="alterarStatus('repetida')">🔁 +1 Repetida</button>
+        </div>
+        <div class="modal-btns">
+            <button class="btn-action btn-limpar" onclick="alterarStatus('limpar')">🗑️ Resetar (Não tenho)</button>
         </div>
     </div>
+</div>
 
-    <!-- CONTEÚDO PRINCIPAL DO SITE -->
-    <header>
-        <div style="flex: 1;">
-            <h1>Álbum Copa 2026 🏆</h1>
-            <p>Controle de Figurinhas de Irmãos</p>
-        </div>
-        <button class="btn-logout" onclick="logout()">🚪 Sair</button>
-    </header>
+<div class="toast" id="toast"></div>
 
-    <!-- PLACAR DE PROGRESSO -->
-    <div class="stats-container">
-        <div class="stat-box">
-            <span id="stat-coladas">0</span>
-            <label>Coladas</label>
-        </div>
-        <div class="stat-box">
-            <span id="stat-progresso">0%</span>
-            <label>Progresso</label>
-        </div>
-        <div class="stat-box">
-            <span id="stat-repetidas">0</span>
-            <label>Repetidas</label>
-        </div>
-    </div>
+<script>
+    // ─── CONFIGURAÇÃO SUPABASE ───────────────────────────────
+    const SUPABASE_URL  = 'https://kxtbhewlnklvqncfkzfu.supabase.co';
+    const SUPABASE_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt4dGJoZXdsbmtsdnFuY2ZremZ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc5NTM3MTcsImV4cCI6MjA2MzUyOTcxN30.FiYoFBZCBiAZFvgN6NiKjRj3kAknEdxJfNLnD3qPaYE';
+    const HASH_CORRETO  = '34ec6f02971bc7eeaf99f5fc504c53f39f1961c1b1f775cb332cb7058b176621';
+    const USUARIO_ID    = 1;
 
-    <!-- BUSCA E FILTROS -->
-    <div class="search-container">
-        <input type="text" id="search-box" class="search-input" placeholder="Buscar por número ou seleção... (Ex: BRA, FWC, 10)" oninput="filtrarGrade()">
-    </div>
+    const { createClient } = supabase;
+    const db = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    <div class="filters">
-        <button class="filter-btn active" onclick="mudarFiltro('todas', this)">Todas</button>
-        <button class="filter-btn" onclick="mudarFiltro('faltam', this)">Faltando</button>
-        <button class="filter-btn" onclick="mudarFiltro('repetidas', this)">Repetidas</button>
-    </div>
+    // ─── ESTADO LOCAL (cache) ────────────────────────────────
+    let dbAlbum     = {};   // { figurinha_id: { status, repetidas, secao, numero } }
+    let stickerSel  = null;
+    let filtroAtual = 'todas';
 
-    <!-- GRADE DO ÁLBUM -->
-    <div class="grid" id="album-grid"></div>
+    // ─── SHA-256 ─────────────────────────────────────────────
+    async function sha256(texto) {
+        const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(texto));
+        return Array.from(new Uint8Array(buf)).map(b => ('0'+b.toString(16)).slice(-2)).join('');
+    }
 
-    <!-- MENU INTERATIVO (MODAL) -->
-    <div class="modal-overlay" id="overlay" onclick="fecharModal()"></div>
-    <div class="modal" id="action-modal">
-        <div class="modal-content">
-            <div class="modal-title" id="modal-sticker-title">Figurinha</div>
-            <p>Selecione uma ação para esta figurinha:</p>
-            <div class="modal-btns">
-                <button class="btn-action btn-tenho" onclick="alterarStatusSticker('colada')">Já Tenho / Colei</button>
-                <button class="btn-action btn-repetida" onclick="alterarStatusSticker('repetida')">+1 Repetida</button>
-            </div>
-            <div class="modal-btns">
-                <button class="btn-action btn-limpar" onclick="alterarStatusSticker('limpar')">Resetar (Não tenho)</button>
-            </div>
-        </div>
-    </div>
+    // ─── LOGIN ───────────────────────────────────────────────
+    async function verificarSenha() {
+        const input = document.getElementById('password-input').value;
+        const btn   = document.getElementById('login-btn');
+        const err   = document.getElementById('login-error');
 
-    <script>
-        // CONFIGURAÇÃO DE SEGURANÇA (O Hash abaixo equivale estritamente à senha "")
-       const HASH_SENHA_CORRETA = "34ec6f02971bc7eeaf99f5fc504c53f39f1961c1b1f775cb332cb7058b176621";
-        
-        // Função criptográfica SHA-256 corrigida e padronizada
-        async function gerarSHA256(texto) {
-            const encoder = new TextEncoder();
-            const data = encoder.encode(texto);
-            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-            const hashArray = Array.from(new Uint8Array(hashBuffer));
-            return hashArray.map(b => ('0' + b.toString(16)).slice(-2)).join('');
+        if (!input) { err.innerText = 'Digite a senha!'; err.style.display = 'block'; return; }
+
+        btn.disabled = true; btn.innerText = 'Verificando...'; err.style.display = 'none';
+
+        const hash = await sha256(input);
+        if (hash === HASH_CORRETO) {
+            sessionStorage.setItem('auth_copa', 'true');
+            document.getElementById('login-screen').style.display = 'none';
+            await carregarAlbum();
+        } else {
+            err.innerText = 'Senha incorreta!'; err.style.display = 'block';
+            btn.disabled = false; btn.innerText = 'Entrar no Painel';
+            document.getElementById('password-input').value = '';
         }
+    }
 
-        const TOTAL_FIGURINHAS = 980;
-        let dbAlbum = {};
-        let stickerSelecionado = null;
-        let filtroAtual = 'todas';
-
-        function inicializarDadosAlbum() {
-            const salvo = localStorage.getItem('album_copa_2026');
-            if (salvo) {
-                dbAlbum = JSON.parse(salvo);
-            } else {
-                const secoes = ["FWC", "USA", "MEX", "CAN", "BRA", "ARG", "FRA", "GER", "ENG", "ITA", "ESP", "POR", "JPN", "MAR", "SEN", "ALM"];
-                let secaoAtualIdx = 0;
-                
-                for (let i = 1; i <= TOTAL_FIGURINHAS; i++) {
-                    if (i % 60 === 0 && secaoAtualIdx < secoes.length - 1) secaoAtualIdx++;
-                    
-                    dbAlbum[i] = {
-                        numero: i,
-                        secao: secoes[secaoAtualIdx],
-                        status: "falta", 
-                        repetidas: 0
-                    };
-                }
-                salvarDados();
-            }
+    function logout() {
+        if (confirm('Tem certeza que deseja sair?')) {
+            sessionStorage.removeItem('auth_copa');
+            window.location.reload();
         }
+    }
 
-        function salvarDados() {
-            localStorage.setItem('album_copa_2026', JSON.stringify(dbAlbum));
-            atualizarPlacar();
-        }
+    // ─── CARREGAR DADOS DO SUPABASE ──────────────────────────
+    async function carregarAlbum() {
+        mostrarLoading(true);
+        try {
+            const { data, error } = await db
+                .from('album_usuario')
+                .select(`
+                    figurinha_id,
+                    status,
+                    repetidas,
+                    figurinhas ( numero, secoes ( codigo ) )
+                `)
+                .eq('usuario_id', USUARIO_ID);
 
-        // Sistema de Login Ajustado
-        async function verificarSenha() {
-            const input = document.getElementById('password-input').value;
-            const btn = document.getElementById('login-btn');
-            const errorMsg = document.getElementById('login-error');
-            
-            if (!input) {
-                errorMsg.innerText = "Por favor, digite a senha!";
-                errorMsg.style.display = 'block';
-                return;
-            }
-            
-            btn.disabled = true;
-            btn.innerText = "Verificando...";
-            errorMsg.style.display = 'none';
-            
-            const hashDigitado = await gerarSHA256(input);
-            
-            if (hashDigitado === HASH_SENHA_CORRETA) {
-                document.getElementById('login-screen').style.display = 'none';
-                localStorage.setItem('autenticado_copa', 'true');
-                inicializarPainel();
-            } else {
-                errorMsg.innerText = "Senha incorreta! Tente novamente.";
-                errorMsg.style.display = 'block';
-                btn.disabled = false;
-                btn.innerText = "Entrar no Painel";
-                document.getElementById('password-input').value = '';
-                // Se der erro, limpa qualquer flag errada do storage por segurança
-                localStorage.removeItem('autenticado_copa');
-            }
-        }
+            if (error) throw error;
 
-        function logout() {
-            if (confirm('Tem certeza que deseja sair?')) {
-                localStorage.removeItem('autenticado_copa');
-                localStorage.removeItem('album_copa_2026');
-                
-                document.getElementById('password-input').value = '';
-                document.getElementById('login-error').style.display = 'none';
-                document.getElementById('login-btn').disabled = false;
-                document.getElementById('login-btn').innerText = 'Entrar no Painel';
-                
-                document.getElementById('login-screen').style.display = 'flex';
-                window.location.reload();
-            }
-        }
+            dbAlbum = {};
+            data.forEach(row => {
+                dbAlbum[row.figurinha_id] = {
+                    figurinha_id: row.figurinha_id,
+                    numero:       row.figurinhas.numero,
+                    secao:        row.figurinhas.secoes.codigo,
+                    status:       row.status,
+                    repetidas:    row.repetidas
+                };
+            });
 
-        function renderizarGrade() {
-            const grid = document.getElementById('album-grid');
-            grid.innerHTML = "";
-            const termoBusca = document.getElementById('search-box').value.toLowerCase();
-
-            for (let i = 1; i <= TOTAL_FIGURINHAS; i++) {
-                const sticker = dbAlbum[i];
-                const matchesSearch = sticker.numero.toString().includes(termoBusca) || sticker.secao.toLowerCase().includes(termoBusca);
-                
-                let matchesFiltro = true;
-                if (filtroAtual === 'faltam') matchesFiltro = (sticker.status === 'falta');
-                if (filtroAtual === 'repetidas') matchesFiltro = (sticker.repetidas > 0);
-
-                if (matchesSearch && matchesFiltro) {
-                    const card = document.createElement('div');
-                    card.className = `sticker-card ${sticker.status === 'colada' ? 'tenho' : ''} ${sticker.repetidas > 0 ? 'has-rep' : ''}`;
-                    card.setAttribute('onclick', `abrirGerenciador(${i})`);
-                    
-                    card.innerHTML = `
-                        <div class="badge-repetida">${sticker.repetidas}</div>
-                        <div class="team">${sticker.secao}</div>
-                        <div class="number">${sticker.numero}</div>
-                        <div></div>
-                    `;
-                    grid.appendChild(card);
-                }
-            }
-        }
-
-        function atualizarPlacar() {
-            let coladas = 0;
-            let repetidas = 0;
-
-            for (let i = 1; i <= TOTAL_FIGURINHAS; i++) {
-                if (dbAlbum[i].status === 'colada') coladas++;
-                repetidas += dbAlbum[i].repetidas;
-            }
-
-            const porcetagem = ((coladas / TOTAL_FIGURINHAS) * 100).toFixed(1);
-
-            document.getElementById('stat-coladas').innerText = coladas;
-            document.getElementById('stat-progresso').innerText = `${porcetagem}%`;
-            document.getElementById('stat-repetidas').innerText = repetidas;
-        }
-
-        function abrirGerenciador(numeroSticker) {
-            stickerSelecionado = numeroSticker;
-            const sticker = dbAlbum[numeroSticker];
-            document.getElementById('modal-sticker-title').innerText = `${sticker.secao} - Nº ${sticker.numero}`;
-            document.getElementById('action-modal').style.display = 'block';
-            document.getElementById('overlay').style.display = 'block';
-        }
-
-        function fecharModal() {
-            document.getElementById('action-modal').style.display = 'none';
-            document.getElementById('overlay').style.display = 'none';
-            stickerSelecionado = null;
-        }
-
-        function alterarStatusSticker(acao) {
-            if (!stickerSelecionado) return;
-
-            if (acao === 'colada') {
-                dbAlbum[stickerSelecionado].status = 'colada';
-            } else if (acao === 'repetida') {
-                dbAlbum[stickerSelecionado].status = 'colada';
-                dbAlbum[stickerSelecionado].repetidas += 1;
-            } else if (acao === 'limpar') {
-                dbAlbum[stickerSelecionado].status = 'falta';
-                dbAlbum[stickerSelecionado].repetidas = 0;
-            }
-
-            salvarDados();
-            renderizarGrade();
-            fecharModal();
-        }
-
-        function mudarFiltro(tipo, elemento) {
-            filtroAtual = tipo;
-            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
-            elemento.classList.add('active');
-            renderizarGrade();
-        }
-
-        function filtrarGrade() {
-            renderizarGrade();
-        }
-
-        function inicializarPainel() {
-            inicializarDadosAlbum();
             atualizarPlacar();
             renderizarGrade();
+        } catch(e) {
+            mostrarToast('❌ Erro ao carregar: ' + e.message);
+        } finally {
+            mostrarLoading(false);
         }
+    }
 
-        window.onload = function() {
-            if (localStorage.getItem('autenticado_copa') === 'true') {
-                document.getElementById('login-screen').style.display = 'none';
-                inicializarPainel();
-            }
+    // ─── SALVAR NO SUPABASE ──────────────────────────────────
+    async function salvarSticker(figurinha_id, status, repetidas) {
+        const { error } = await db
+            .from('album_usuario')
+            .update({ status, repetidas, atualizado_em: new Date().toISOString() })
+            .eq('usuario_id', USUARIO_ID)
+            .eq('figurinha_id', figurinha_id);
+
+        if (error) { mostrarToast('❌ Erro ao salvar!'); return false; }
+        return true;
+    }
+
+    // ─── AÇÕES DA FIGURINHA ──────────────────────────────────
+    async function alterarStatus(acao) {
+        if (!stickerSel) return;
+
+        const s = dbAlbum[stickerSel];
+        let novoStatus   = s.status;
+        let novasRep     = s.repetidas;
+
+        if (acao === 'colada')   { novoStatus = 'colada'; }
+        if (acao === 'repetida') { novoStatus = 'colada'; novasRep += 1; }
+        if (acao === 'limpar')   { novoStatus = 'falta';  novasRep = 0; }
+
+        fecharModal();
+
+        const ok = await salvarSticker(stickerSel, novoStatus, novasRep);
+        if (ok) {
+            dbAlbum[stickerSel].status    = novoStatus;
+            dbAlbum[stickerSel].repetidas = novasRep;
+            atualizarPlacar();
+            renderizarGrade();
+            mostrarToast('✅ Figurinha atualizada!');
         }
-    </script>
+    }
+
+    // ─── RENDER ──────────────────────────────────────────────
+    function renderizarGrade() {
+        const grid  = document.getElementById('album-grid');
+        const busca = document.getElementById('search-box').value.toLowerCase();
+        grid.innerHTML = '';
+
+        const itens = Object.values(dbAlbum).sort((a,b) => a.numero - b.numero);
+
+        itens.forEach(s => {
+            const matchBusca  = s.numero.toString().includes(busca) || s.secao.toLowerCase().includes(busca);
+            let   matchFiltro = true;
+            if (filtroAtual === 'faltam')    matchFiltro = s.status === 'falta';
+            if (filtroAtual === 'repetidas') matchFiltro = s.repetidas > 0;
+
+            if (!matchBusca || !matchFiltro) return;
+
+            const card = document.createElement('div');
+            card.className = `sticker-card ${s.status === 'colada' ? 'tenho' : ''} ${s.repetidas > 0 ? 'has-rep' : ''}`;
+            card.onclick = () => abrirModal(s.figurinha_id);
+            card.innerHTML = `
+                <div class="badge-repetida">${s.repetidas}</div>
+                <div class="team">${s.secao}</div>
+                <div class="number">${s.numero}</div>
+                <div></div>
+            `;
+            grid.appendChild(card);
+        });
+    }
+
+    function atualizarPlacar() {
+        const itens = Object.values(dbAlbum);
+        const coladas   = itens.filter(s => s.status === 'colada').length;
+        const repetidas = itens.reduce((acc, s) => acc + s.repetidas, 0);
+        const total     = itens.length || 980;
+        document.getElementById('stat-coladas').innerText   = coladas;
+        document.getElementById('stat-progresso').innerText = `${(coladas/total*100).toFixed(1)}%`;
+        document.getElementById('stat-repetidas').innerText = repetidas;
+    }
+
+    function abrirModal(id) {
+        stickerSel = id;
+        const s = dbAlbum[id];
+        document.getElementById('modal-sticker-title').innerText = `${s.secao} - Nº ${s.numero}`;
+        document.getElementById('action-modal').style.display = 'block';
+        document.getElementById('overlay').style.display = 'block';
+    }
+
+    function fecharModal() {
+        document.getElementById('action-modal').style.display = 'none';
+        document.getElementById('overlay').style.display = 'none';
+        stickerSel = null;
+    }
+
+    function mudarFiltro(tipo, el) {
+        filtroAtual = tipo;
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        el.classList.add('active');
+        renderizarGrade();
+    }
+
+    function filtrarGrade() { renderizarGrade(); }
+
+    // ─── HELPERS ─────────────────────────────────────────────
+    function mostrarLoading(show) {
+        document.getElementById('loading-screen').style.display = show ? 'flex' : 'none';
+    }
+
+    function mostrarToast(msg) {
+        const t = document.getElementById('toast');
+        t.innerText = msg; t.style.display = 'block';
+        setTimeout(() => t.style.display = 'none', 2500);
+    }
+
+    // ─── INIT ─────────────────────────────────────────────────
+    window.onload = () => {
+        if (sessionStorage.getItem('auth_copa') === 'true') {
+            document.getElementById('login-screen').style.display = 'none';
+            carregarAlbum();
+        }
+    };
+</script>
 </body>
 </html>
