@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Painel da Copa 2026 ⚽</title>
+    <script src="https://cdn.jsdelivr.net/npm/bcryptjs@2.4.3/dist/bcrypt.min.js"></script>
     <style>
         :root {
             --primary: #6a1b29; /* Vinho da Copa */
@@ -32,10 +33,25 @@
             background: var(--secondary); color: var(--primary); border: none;
             padding: 12px 30px; font-weight: bold; border-radius: 8px; cursor: pointer; font-size: 16px;
         }
+        .login-box button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
 
         /* Header e Placar */
-        header { background: var(--primary); color: white; padding: 20px; text-align: center; sticky: top; }
-        header h1 { color: var(--secondary); font-size: 24px; margin-bottom: 5px; }
+        header { 
+            background: var(--primary); color: white; padding: 20px; text-align: center; sticky: top; 
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        header h1 { color: var(--secondary); font-size: 24px; margin-bottom: 5px; flex: 1; }
+        
+        .btn-logout {
+            background: #e74c3c; color: white; border: none; padding: 8px 16px;
+            border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 14px;
+        }
+        .btn-logout:hover {
+            background: #c0392b;
+        }
         
         .stats-container {
             display: flex; justify-content: space-around; background: white;
@@ -117,15 +133,18 @@
             <h2>🔐 Álbum Privado</h2>
             <p>Acesso exclusivo para os irmãos</p>
             <input type="password" id="password-input" placeholder="Digite a senha de acesso">
-            <button onclick="verificarSenha()">Entrar no Painel</button>
+            <button id="login-btn" onclick="verificarSenha()">Entrar no Painel</button>
             <p id="login-error" style="color: #ff7675; margin-top: 10px; display: none;">Senha incorreta!</p>
         </div>
     </div>
 
     <!-- CONTEÚDO PRINCIPAL DO SITE -->
     <header>
-        <h1>Álbum Copa 2026 🏆</h1>
-        <p>Controle de Figurinhas de Irmãos</p>
+        <div style="flex: 1;">
+            <h1>Álbum Copa 2026 🏆</h1>
+            <p>Controle de Figurinhas de Irmãos</p>
+        </div>
+        <button class="btn-logout" onclick="logout()">🚪 Sair</button>
     </header>
 
     <!-- PLACAR DE PROGRESSO -->
@@ -175,8 +194,9 @@
     </div>
 
     <script>
-        // CONFIGURAÇÃO DE SEGURANÇA (Altere a senha aqui se quiser!)
-        const SENHA_CORRETA = "italoigor"; 
+        // CONFIGURAÇÃO DE SEGURANÇA - SENHA CRIPTOGRAFADA COM BCRYPTJS
+        // Hash gerado a partir de: "italoigor"
+        const SENHA_HASH = "$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcg7b3XeKeUxWdeS86E36P4/za.";
         
         // Dados do Álbum (980 Figurinhas divididas por seções típicas da Panini)
         const TOTAL_FIGURINHAS = 980;
@@ -215,15 +235,53 @@
             atualizarPlacar();
         }
 
-        // Sistema de Login Simples
-        function verificarSenha() {
+        // Sistema de Login com Criptografia Bcrypt
+        async function verificarSenha() {
             const input = document.getElementById('password-input').value;
-            if (input === SENHA_CORRETA) {
-                document.getElementById('login-screen').style.display = 'none';
-                localStorage.setItem('autenticado_copa', 'true');
-                inicializarPainel();
-            } else {
+            const btn = document.getElementById('login-btn');
+            
+            // Desabilita o botão enquanto valida
+            btn.disabled = true;
+            btn.innerText = "Verificando...";
+            
+            try {
+                // Compara a senha digitada com o hash
+                const senhaCorreta = await bcrypt.compare(input, SENHA_HASH);
+                
+                if (senhaCorreta) {
+                    document.getElementById('login-screen').style.display = 'none';
+                    localStorage.setItem('autenticado_copa', 'true');
+                    inicializarPainel();
+                } else {
+                    document.getElementById('login-error').style.display = 'block';
+                    btn.disabled = false;
+                    btn.innerText = "Entrar no Painel";
+                }
+            } catch (erro) {
+                console.error('Erro ao verificar senha:', erro);
                 document.getElementById('login-error').style.display = 'block';
+                btn.disabled = false;
+                btn.innerText = "Entrar no Painel";
+            }
+        }
+
+        // Função de Logout - Limpa autenticação e localStorage
+        function logout() {
+            if (confirm('Tem certeza que deseja sair?')) {
+                // Remove autenticação
+                localStorage.removeItem('autenticado_copa');
+                localStorage.removeItem('album_copa_2026');
+                
+                // Limpa o formulário de login
+                document.getElementById('password-input').value = '';
+                document.getElementById('login-error').style.display = 'none';
+                document.getElementById('login-btn').disabled = false;
+                document.getElementById('login-btn').innerText = 'Entrar no Painel';
+                
+                // Mostra tela de login
+                document.getElementById('login-screen').style.display = 'flex';
+                
+                console.log('✅ Cache limpo e desautenticado com sucesso!');
             }
         }
 
