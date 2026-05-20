@@ -299,10 +299,10 @@
 
     // ─── AÇÕES DA FIGURINHA ──────────────────────────────────
     async function alterarStatus(acao) {
-        if (!stickerSel) return;
+        if (stickerSel === null || stickerSel === undefined) return;
 
         // Salvar o id ANTES de fechar o modal
-        const idParaSalvar = parseInt(stickerSel);
+        const idParaSalvar = Number(stickerSel);
         const s = dbAlbum[idParaSalvar];
         if (!s) { fecharModal(); return; }
 
@@ -343,7 +343,8 @@
 
             const card = document.createElement('div');
             card.className = `sticker-card ${s.status === 'colada' ? 'tenho' : ''} ${s.repetidas > 0 ? 'has-rep' : ''}`;
-            card.onclick = () => abrirModal(s.figurinha_id);
+            card.dataset.fid = s.figurinha_id;
+            card.addEventListener('click', function() { abrirModal(this.dataset.fid); });
             card.innerHTML = `
                 <div class="badge-repetida">${s.repetidas}</div>
                 <div class="team">${s.secao}</div>
@@ -365,8 +366,8 @@
     }
 
     function abrirModal(id) {
-        stickerSel = parseInt(id);
-        const s = dbAlbum[id];
+        stickerSel = Number(id);
+        const s = dbAlbum[stickerSel];
         document.getElementById('modal-sticker-title').innerText = `${s.secao} - Nº ${s.numero}`;
         document.getElementById('action-modal').style.display = 'block';
         document.getElementById('overlay').style.display = 'block';
