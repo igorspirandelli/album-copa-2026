@@ -379,7 +379,7 @@
             if (filtroAtual === 'repetidas') matchFiltro = s.repetidas > 0;
             if (!matchBusca || !matchFiltro) return;
 
-            if (!grupos[s.secao]) grupos[s.secao] = { grupo: s.grupo, nome: s.nome_secao || s.secao, itens: [] };
+            if (!grupos[s.secao]) grupos[s.secao] = { grupo: s.grupo, nome: s.nome_secao, itens: [] };
             grupos[s.secao].itens.push(s);
         });
 
@@ -388,7 +388,10 @@
             // Cabeçalho da seção
             const header = document.createElement('div');
             header.className = 'secao-header';
-            header.innerHTML = `<span class="secao-grupo">${dados.grupo !== 'Inicial' && dados.grupo !== 'Especial' ? 'Grupo ' + dados.grupo : dados.grupo}</span> <span class="secao-codigo">${secao}</span> <span class="secao-nome">${dados.nome}</span>`;
+            // Buscar nome real da seção
+            const nomeSecao = dbSecoes.find(s => s.codigo === secao);
+            const nomeExibir = nomeSecao ? nomeSecao.nome : secao;
+            header.innerHTML = `<span class="secao-grupo">${dados.grupo !== 'Inicial' && dados.grupo !== 'Especial' ? 'Grupo ' + dados.grupo : dados.grupo}</span> <span class="secao-codigo">${secao}</span> <span class="secao-nome">${nomeExibir}</span>`;
             grid.appendChild(header);
 
             // Cards da seção
