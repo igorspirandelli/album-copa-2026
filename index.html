@@ -23,7 +23,7 @@
         }
         .login-box { text-align: center; padding: 20px; width: 90%; max-width: 400px; }
         .login-box input {
-            width: 100%; padding: 12px; margin: 15px 0; border: none;
+            width: 100%; padding: 12px; margin: 8px 0; border: none;
             border-radius: 8px; font-size: 16px; text-align: center; color: #333;
         }
         .login-box button {
@@ -143,7 +143,9 @@
     <div class="login-box">
         <h2>🔐 Álbum Privado</h2>
         <p>Acesso exclusivo para os irmãos</p>
-        <input type="password" id="password-input" placeholder="Digite a senha de acesso"
+        <input type="email" id="email-input" placeholder="Seu e-mail"
+               onkeypress="if(event.key==='Enter') verificarSenha()">
+        <input type="password" id="password-input" placeholder="Sua senha"
                onkeypress="if(event.key==='Enter') verificarSenha()">
         <button id="login-btn" onclick="verificarSenha()">Entrar no Painel</button>
         <p id="login-error" style="color:#ff7675;margin-top:10px;display:none;"></p>
@@ -219,37 +221,32 @@
     let stickerSel  = null;
     let filtroAtual = 'todas';
 
-    // ─── SHA-256 ─────────────────────────────────────────────
-    async function sha256(texto) {
-        const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(texto));
-        return Array.from(new Uint8Array(buf)).map(b => ('0'+b.toString(16)).slice(-2)).join('');
-    }
-
-    // ─── LOGIN ───────────────────────────────────────────────
+    // ─── LOGIN SUPABASE AUTH ─────────────────────────────────
     async function verificarSenha() {
-        const input = document.getElementById('password-input').value;
+        const email = document.getElementById('email-input').value;
+        const senha = document.getElementById('password-input').value;
         const btn   = document.getElementById('login-btn');
         const err   = document.getElementById('login-error');
 
-        if (!input) { err.innerText = 'Digite a senha!'; err.style.display = 'block'; return; }
+        if (!email || !senha) { err.innerText = 'Preencha e-mail e senha!'; err.style.display = 'block'; return; }
 
         btn.disabled = true; btn.innerText = 'Verificando...'; err.style.display = 'none';
 
-        const hash = await sha256(input);
-        if (hash === HASH_CORRETO) {
-            sessionStorage.setItem('auth_copa', 'true');
-            document.getElementById('login-screen').style.display = 'none';
-            await carregarAlbum();
-        } else {
-            err.innerText = 'Senha incorreta!'; err.style.display = 'block';
+        const { data, error } = await db.auth.signInWithPassword({ email, password: senha });
+
+        if (error) {
+            err.innerText = 'E-mail ou senha incorretos!'; err.style.display = 'block';
             btn.disabled = false; btn.innerText = 'Entrar no Painel';
             document.getElementById('password-input').value = '';
+        } else {
+            document.getElementById('login-screen').style.display = 'none';
+            await carregarAlbum();
         }
     }
 
-    function logout() {
+    async function logout() {
         if (confirm('Tem certeza que deseja sair?')) {
-            sessionStorage.removeItem('auth_copa');
+            await db.auth.signOut();
             window.location.reload();
         }
     }
@@ -456,10 +453,11 @@
     }
 
     // ─── INIT ─────────────────────────────────────────────────
-    window.onload = () => {
-        if (sessionStorage.getItem('auth_copa') === 'true') {
+    window.onload = async () => {
+        const { data: { session } } = await db.auth.getSession();
+        if (session) {
             document.getElementById('login-screen').style.display = 'none';
-            carregarAlbum();
+            await carregarAlbum();
         }
     };
 </script>
