@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Painel da Copa 2026 ⚽</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <style>
         :root {
             --primary: #6a1b29;
@@ -49,6 +50,11 @@
             display: flex; justify-content: space-between; align-items: center;
         }
         header h1 { color: var(--secondary); font-size: 24px; margin-bottom: 5px; flex: 1; }
+        .btn-excel {
+            background: #27ae60; color: white; border: none; padding: 8px 16px;
+            border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 14px;
+            margin-right: 8px;
+        }
         .btn-logout {
             background: #e74c3c; color: white; border: none; padding: 8px 16px;
             border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 14px;
@@ -450,6 +456,85 @@
         const t = document.getElementById('toast');
         t.innerText = msg; t.style.display = 'block';
         setTimeout(() => t.style.display = 'none', 2500);
+    }
+
+    // ─── EXPORTAR EXCEL ──────────────────────────────────────
+    function gerarExcel() {
+        const itens = Object.values(dbAlbum).sort((a,b) => a.figurinha_id - b.figurinha_id);
+
+        // Aba 1: Todas as figurinhas
+        const todasData = [['Seção', 'País', 'Número', 'Status', 'Repetidas']];
+        itens.forEach(s => {
+            const secaoInfo = dbSecoes.find(x => x.codigo === s.secao);
+            const pais = secaoInfo ? secaoInfo.nome : s.secao;
+            todasData.push([
+                s.secao,
+                pais,
+                s.numero,
+                s.status === 'colada' ? 'Colada' : 'Faltando',
+                s.repetidas
+            ]);
+        });
+
+        // Aba 2: Faltando
+        const faltandoData = [['Seção', 'País', 'Número']];
+        itens.filter(s => s.status === 'falta').forEach(s => {
+            const secaoInfo = dbSecoes.find(x => x.codigo === s.secao);
+            const pais = secaoInfo ? secaoInfo.nome : s.secao;
+            faltandoData.push([s.secao, pais, s.numero]);
+        });
+
+        // Aba 3: Repetidas
+        const repetidasData = [['Seção', 'País', 'Número', 'Quantidade']];
+        itens.filter(s => s.repetidas > 0).forEach(s => {
+            const secaoInfo = dbSecoes.find(x => x.codigo === s.secao);
+            const pais = secaoInfo ? secaoInfo.nome : s.secao;
+            repetidasData.push([s.secao, pais, s.numero, s.repetidas]);
+        });
+
+        // Aba 4: Resumo por seção
+        const resumoMap = {};
+        itens.forEach(s => {
+            if (!resumoMap[s.secao]) {
+                const secaoInfo = dbSecoes.find(x => x.codigo === s.secao);
+                resumoMap[s.secao] = { pais: secaoInfo ? secaoInfo.nome : s.secao, grupo: s.grupo, total: 0, coladas: 0, faltando: 0, repetidas: 0 };
+            }
+            resumoMap[s.secao].total++;
+            if (s.status === 'colada') resumoMap[s.secao].coladas++;
+            else resumoMap[s.secao].faltando++;
+            resumoMap[s.secao].repetidas += s.repetidas;
+        });
+        const resumoData = [['Grupo', 'Código', 'País', 'Total', 'Coladas', 'Faltando', 'Repetidas', '% Completo']];
+        Object.entries(resumoMap).forEach(([cod, r]) => {
+            resumoData.push([
+                r.grupo, cod, r.pais, r.total, r.coladas, r.faltando, r.repetidas,
+                ((r.coladas / r.total) * 100).toFixed(1) + '%'
+            ]);
+        });
+
+        // Montar workbook
+        const wb = XLSX.utils.book_new();
+
+        const ws1 = XLSX.utils.aoa_to_sheet(todasData);
+        const ws2 = XLSX.utils.aoa_to_sheet(faltandoData);
+        const ws3 = XLSX.utils.aoa_to_sheet(repetidasData);
+        const ws4 = XLSX.utils.aoa_to_sheet(resumoData);
+
+        // Largura das colunas
+        ws1['!cols'] = [{wch:8},{wch:20},{wch:10},{wch:12},{wch:12}];
+        ws2['!cols'] = [{wch:8},{wch:20},{wch:10}];
+        ws3['!cols'] = [{wch:8},{wch:20},{wch:10},{wch:12}];
+        ws4['!cols'] = [{wch:10},{wch:8},{wch:20},{wch:8},{wch:10},{wch:10},{wch:12},{wch:12}];
+
+        XLSX.utils.book_append_sheet(wb, ws1, 'Todas');
+        XLSX.utils.book_append_sheet(wb, ws2, 'Faltando');
+        XLSX.utils.book_append_sheet(wb, ws3, 'Repetidas');
+        XLSX.utils.book_append_sheet(wb, ws4, 'Resumo por Seção');
+
+        const data = new Date();
+        const nome = `Album_Copa2026_${data.getDate()}-${data.getMonth()+1}-${data.getFullYear()}.xlsx`;
+        XLSX.writeFile(wb, nome);
+        mostrarToast('📊 Excel gerado com sucesso!');
     }
 
     // ─── INIT ─────────────────────────────────────────────────
